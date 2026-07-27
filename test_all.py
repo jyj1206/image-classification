@@ -28,7 +28,9 @@ CSV_FIELDS = (
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Evaluate all results/**/checkpoints/best.pth files."
+        description=(
+            "Evaluate <results-root>/<result-directory>/checkpoints/best.pth files."
+        )
     )
     parser.add_argument("--results-root", default="results")
     parser.add_argument("--runs-root", default="runs")
@@ -68,9 +70,12 @@ def main():
     if not results_root.exists():
         raise FileNotFoundError(f"Results root does not exist: {results_root}")
 
-    checkpoints = sorted(results_root.rglob("checkpoints/best.pth"))
+    checkpoints = sorted(results_root.glob("*/checkpoints/best.pth"))
     if not checkpoints:
-        raise FileNotFoundError(f"No best checkpoints found under: {results_root}")
+        raise FileNotFoundError(
+            "No checkpoints matching "
+            f"{results_root}/*/checkpoints/best.pth were found."
+        )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     runs_root = Path(args.runs_root)

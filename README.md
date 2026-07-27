@@ -107,9 +107,10 @@ map overview 및 PPT용 개별 이미지를 저장한다.
 python test_all.py --results-root results
 ```
 
-`results/**/checkpoints/best.pth`를 모두 찾아 각각의 test 결과를 `runs/`에
-저장하고, 전체 accuracy, macro precision, macro recall, macro F1을
-`runs/all_test_results_<timestamp>.csv`로 집계한다.
+지정한 폴더의 `<results-root>/*/checkpoints/best.pth`만 찾아 각각의 test
+결과를 `runs/`에 저장하고, 전체 accuracy, macro precision, macro recall,
+macro F1을 `runs/all_test_results_<timestamp>.csv`로 집계한다. 하위 폴더를
+무제한 재귀 탐색하지 않는다.
 
 ## 추가 ablation config
 
