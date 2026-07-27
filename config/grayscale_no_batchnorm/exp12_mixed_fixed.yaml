@@ -1,0 +1,4 @@
+_base_: [base.yaml, ../exp12_mixed_fixed.yaml]
+experiment: {name: gray_no_bn_exp12_mixed_fixed, result_root: results/grayscale_no_batchnorm}
+dataset: {grayscale: true}
+model: {args: {input_channels: 1, spatial_kernels: 4, use_batchnorm: false}}

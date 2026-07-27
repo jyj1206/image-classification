@@ -43,11 +43,11 @@ Input 3×32×32
 12-kernel group:
 
 - `exp11_random_learnable_12.yaml`
-- `exp12_mixed_learnable.yaml`
+- `exp12_mixed_fixed.yaml`
 
 Mixed는 각 RGB 채널에 `Sobel-X, Sobel-Y, Laplacian, Gaussian`을 하나씩
 적용한다. 두 실험 모두 `Depthwise 3→12 → Pointwise 12→64`이며 random과
-mixed handcrafted initialization의 차이만 비교한다.
+mixed handcrafted fixed filter의 차이를 비교한다.
 
 Sobel 커널 순서는 `R-X, R-Y, G-X, G-Y, B-X, B-Y`이다.
 
