@@ -1,0 +1,3 @@
+_base_: [../grayscale_no_batchnorm/exp12_mixed_fixed.yaml, base.yaml]
+experiment:
+  name: stable_gray_no_bn_exp12_mixed_fixed

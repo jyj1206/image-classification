@@ -1,0 +1,3 @@
+_base_: [../grayscale_no_batchnorm/exp3_identity_learnable.yaml, base.yaml]
+experiment:
+  name: stable_gray_no_bn_exp3_identity_learnable

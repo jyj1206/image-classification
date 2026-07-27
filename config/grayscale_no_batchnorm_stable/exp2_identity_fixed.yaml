@@ -1,0 +1,3 @@
+_base_: [../grayscale_no_batchnorm/exp2_identity_fixed.yaml, base.yaml]
+experiment:
+  name: stable_gray_no_bn_exp2_identity_fixed

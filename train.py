@@ -55,7 +55,16 @@ def seed_everything(seed):
     torch.backends.cudnn.benchmark = False
 
 
-def run_epoch(model, loader, criterion, device, optimizer=None, description=None):
+def run_epoch(
+    model,
+    loader,
+    criterion,
+    device,
+    optimizer=None,
+    description=None,
+    gradient_clip_norm=None,
+    stop_on_non_finite=True,
+):
     training = optimizer is not None
     model.train(training)
     totals = torch.zeros(3, dtype=torch.float64, device=device)
@@ -75,8 +84,21 @@ def run_epoch(model, loader, criterion, device, optimizer=None, description=None
         with torch.set_grad_enabled(training):
             logits = model(images)
             loss = criterion(logits, labels)
+            if stop_on_non_finite and not torch.isfinite(loss):
+                raise RuntimeError(
+                    f"Non-finite loss detected during {description}: {loss.item()}"
+                )
             if training:
                 loss.backward()
+                if gradient_clip_norm is not None:
+                    gradient_norm = torch.nn.utils.clip_grad_norm_(
+                        model.parameters(), max_norm=gradient_clip_norm
+                    )
+                    if stop_on_non_finite and not torch.isfinite(gradient_norm):
+                        raise RuntimeError(
+                            f"Non-finite gradient detected during {description}: "
+                            f"{gradient_norm.item()}"
+                        )
                 optimizer.step()
         totals[0] += loss.detach() * labels.size(0)
         totals[1] += (logits.argmax(1) == labels).sum()
@@ -201,16 +223,26 @@ def main():
             )
 
         epochs = int(config["trainer"]["epochs"])
+        clip_cfg = config["trainer"].get("gradient_clip", {})
+        gradient_clip_norm = (
+            float(clip_cfg["max_norm"]) if clip_cfg.get("enabled", False) else None
+        )
+        stop_on_non_finite = bool(
+            config["trainer"].get("stop_on_non_finite", True)
+        )
         for epoch in range(start_epoch, epochs + 1):
             if hasattr(train_loader.sampler, "set_epoch"):
                 train_loader.sampler.set_epoch(epoch)
             train_metrics = run_epoch(
                 model, train_loader, criterion, device, optimizer,
                 description=f"Epoch {epoch:03d}/{epochs} train",
+                gradient_clip_norm=gradient_clip_norm,
+                stop_on_non_finite=stop_on_non_finite,
             )
             val_metrics = run_epoch(
                 model, val_loader, criterion, device,
                 description=f"Epoch {epoch:03d}/{epochs} val",
+                stop_on_non_finite=stop_on_non_finite,
             )
             record = {
                 "epoch": epoch,

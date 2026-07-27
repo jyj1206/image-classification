@@ -1,0 +1,27 @@
+experiment:
+  result_root: results/grayscale_no_batchnorm_stable
+
+dataset:
+  grayscale: true
+
+model:
+  args:
+    input_channels: 1
+    use_batchnorm: false
+
+trainer:
+  optimizer:
+    name: sgd
+    lr: 0.03
+    momentum: 0.9
+    weight_decay: 0.0005
+    nesterov: true
+  scheduler:
+    name: warmup_cosine
+    warmup_epochs: 5
+    warmup_start_factor: 0.1
+    eta_min: 0.00001
+  gradient_clip:
+    enabled: true
+    max_norm: 5.0
+  stop_on_non_finite: true

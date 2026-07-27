@@ -1,0 +1,3 @@
+_base_: [../exp1_random_learnable_3.yaml, base.yaml]
+experiment:
+  name: stable_no_bn_exp1_random_learnable_3

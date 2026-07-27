@@ -1,0 +1,3 @@
+_base_: [../exp5_laplacian_learnable.yaml, base.yaml]
+experiment:
+  name: stable_no_bn_exp5_laplacian_learnable

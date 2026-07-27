@@ -1,0 +1,3 @@
+_base_: [../exp12_mixed_fixed.yaml, base.yaml]
+experiment:
+  name: stable_no_bn_exp12_mixed_fixed

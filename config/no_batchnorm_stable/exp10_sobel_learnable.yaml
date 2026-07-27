@@ -1,0 +1,3 @@
+_base_: [../exp10_sobel_learnable.yaml, base.yaml]
+experiment:
+  name: stable_no_bn_exp10_sobel_learnable
