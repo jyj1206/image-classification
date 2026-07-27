@@ -1,0 +1,51 @@
+experiment:
+  name: cifar10_stem_experiment
+  result_root: results
+
+runtime:
+  seed: 42
+  device: cuda
+  gpu_ids: [0]
+  distributed:
+    enabled: false
+    backend: auto
+
+dataset:
+  name: cifar10
+  val_ratio: 0.1
+  train:
+    root: data
+    batch_size: 128
+    num_workers: 4
+    download: true
+  validation:
+    batch_size: 256
+    num_workers: 4
+  test:
+    root: data
+    batch_size: 256
+    num_workers: 4
+    download: true
+
+model:
+  name: cifar10_filter_net
+  args:
+    num_classes: 10
+    stem_filter: learnable
+    stem_trainable: true
+    spatial_kernels: 3
+
+trainer:
+  epochs: 200
+  loss: cross_entropy
+  optimizer:
+    name: sgd
+    lr: 0.1
+    momentum: 0.9
+    weight_decay: 0.0005
+    nesterov: true
+  scheduler:
+    name: warmup_cosine
+    warmup_epochs: 5
+    warmup_start_factor: 0.1
+    eta_min: 0.00001

@@ -1,1 +1,11 @@
 *.png
+__pycache__/
+*.py[cod]
+data/*
+!data/.gitkeep
+results/*
+!results/.gitkeep
+runs/*
+!runs/.gitkeep
+weights/*
+!weights/.gitkeep

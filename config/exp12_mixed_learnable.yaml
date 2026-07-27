@@ -1,0 +1,8 @@
+_base_: base.yaml
+experiment:
+  name: exp12_mixed_learnable
+model:
+  args:
+    stem_filter: mixed
+    stem_trainable: true
+    spatial_kernels: 12

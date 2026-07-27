@@ -1,0 +1,8 @@
+_base_: base.yaml
+experiment:
+  name: exp1_random_learnable_3
+model:
+  args:
+    stem_filter: learnable
+    stem_trainable: true
+    spatial_kernels: 3

@@ -6,8 +6,33 @@ import yaml
 
 
 def load_config(path):
-    with Path(path).open("r", encoding="utf-8") as file:
-        return yaml.safe_load(file) or {}
+    path = Path(path)
+    with path.open("r", encoding="utf-8") as file:
+        config = yaml.safe_load(file) or {}
+
+    base_path = config.pop("_base_", None)
+    if base_path is None:
+        return config
+    if isinstance(base_path, (str, Path)):
+        base_path = [base_path]
+
+    merged = {}
+    for item in base_path:
+        candidate = Path(item)
+        if not candidate.is_absolute():
+            candidate = path.parent / candidate
+        merged = _deep_merge(merged, load_config(candidate))
+    return _deep_merge(merged, config)
+
+
+def _deep_merge(base, override):
+    merged = deepcopy(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = deepcopy(value)
+    return merged
 
 
 def save_config(config, path):
@@ -22,7 +47,7 @@ def normalize_config(config):
 
     experiment_cfg = config.setdefault("experiment", {})
     experiment_cfg.setdefault("name", "experiment")
-    experiment_cfg.setdefault("result_root", "result")
+    experiment_cfg.setdefault("result_root", "results")
     experiment_cfg.pop("run_prefix", None)
     experiment_cfg.pop("run_dir", None)
 

@@ -1,0 +1,8 @@
+_base_: base.yaml
+experiment:
+  name: exp10_sobel_learnable
+model:
+  args:
+    stem_filter: sobel
+    stem_trainable: true
+    spatial_kernels: 6

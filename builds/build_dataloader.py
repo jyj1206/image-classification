@@ -1,92 +1,100 @@
 import torch
 from torch.utils.data import DataLoader, Subset
 from torch.utils.data.distributed import DistributedSampler
+from torchvision.datasets import CIFAR10
 
-from datasets import PairedImageDataset, get_transforms
+from datasets.transforms import get_transforms
 
 
-def build_dataloader(config):
-    train_dataset, val_dataset, test_dataset = build_dataset(config)
-
-    train_config = config["dataset"]["train"]
-    test_config = config["dataset"]["validation"]
-    runtime_config = config["runtime"]
+def build_dataloader(config, include_test=True):
+    train_dataset, val_dataset, test_dataset = build_dataset(
+        config, include_test=include_test
+    )
+    dataset_cfg = config["dataset"]
+    train_cfg = dataset_cfg["train"]
+    val_cfg = dataset_cfg["validation"]
+    test_cfg = dataset_cfg.get("test", val_cfg)
+    runtime_cfg = config["runtime"]
 
     distributed = torch.distributed.is_available() and torch.distributed.is_initialized()
-    pin_memory = runtime_config.get("device", "cuda") == "cuda"
-
+    pin_memory = runtime_cfg.get("device", "cuda") == "cuda"
     train_sampler = DistributedSampler(train_dataset, shuffle=True) if distributed else None
     val_sampler = DistributedSampler(val_dataset, shuffle=False) if distributed else None
-    test_sampler = DistributedSampler(test_dataset, shuffle=False) if distributed else None
+    test_sampler = (
+        DistributedSampler(test_dataset, shuffle=False)
+        if distributed and test_dataset is not None
+        else None
+    )
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=train_config["batch_size"],
+        batch_size=train_cfg["batch_size"],
         shuffle=train_sampler is None,
         sampler=train_sampler,
-        num_workers=train_config.get("num_workers", 0),
+        num_workers=train_cfg.get("num_workers", 0),
         pin_memory=pin_memory,
-        drop_last=train_config.get("drop_last", False),
+        drop_last=train_cfg.get("drop_last", False),
     )
-
     val_loader = DataLoader(
         val_dataset,
-        batch_size=test_config["batch_size"],
+        batch_size=val_cfg["batch_size"],
         shuffle=False,
         sampler=val_sampler,
-        num_workers=test_config.get("num_workers", 0),
+        num_workers=val_cfg.get("num_workers", 0),
         pin_memory=pin_memory,
     )
-
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=test_config["batch_size"],
-        shuffle=False,
-        sampler=test_sampler,
-        num_workers=test_config.get("num_workers", 0),
-        pin_memory=pin_memory,
-    )
-
+    test_loader = None
+    if test_dataset is not None:
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=test_cfg["batch_size"],
+            shuffle=False,
+            sampler=test_sampler,
+            num_workers=test_cfg.get("num_workers", 0),
+            pin_memory=pin_memory,
+        )
     return train_loader, val_loader, test_loader
 
 
-def build_dataset(config):
-    train_config = config["dataset"]["train"]
-    test_config = config["dataset"]["validation"]
+def build_dataset(config, include_test=True):
+    dataset_cfg = config["dataset"]
+    if dataset_cfg.get("name", "").lower() != "cifar10":
+        raise ValueError("This experiment supports only the CIFAR-10 dataset.")
 
-    val_ratio = config["dataset"].get("val_ratio", 0.1)
-    seed = config["runtime"].get("seed", 42)
-    seed = 42 if seed is None else seed
+    train_cfg = dataset_cfg["train"]
+    test_cfg = dataset_cfg.get("test", dataset_cfg["validation"])
+    root = train_cfg.get("root", dataset_cfg.get("root", "data"))
+    seed = config["runtime"].get("seed") or 42
 
-    train_source = PairedImageDataset(
-        root_dir=train_config["root"],
-        split=train_config["split"],
-        patch_size=train_config.get("patch_size"),
-        transform=get_transforms(split="train"),
+    train_augmented = CIFAR10(
+        root=root,
+        train=True,
+        download=train_cfg.get("download", True),
+        transform=get_transforms("train"),
     )
-
-    val_source = PairedImageDataset(
-        root_dir=train_config["root"],
-        split=train_config["split"],
-        patch_size=None,
-        transform=get_transforms(split="validation"),
+    train_evaluation = CIFAR10(
+        root=root,
+        train=True,
+        download=False,
+        transform=get_transforms("validation"),
     )
+    test_dataset = None
+    if include_test:
+        test_dataset = CIFAR10(
+            root=test_cfg.get("root", root),
+            train=False,
+            download=test_cfg.get("download", True),
+            transform=get_transforms("test"),
+        )
 
-    test_dataset = PairedImageDataset(
-        root_dir=test_config["root"],
-        split=test_config["split"],
-        patch_size=None,
-        transform=get_transforms(split="validation"),
+    num_total = len(train_augmented)
+    num_val = int(num_total * dataset_cfg.get("val_ratio", 0.1))
+    indices = torch.randperm(
+        num_total, generator=torch.Generator().manual_seed(seed)
+    ).tolist()
+    train_indices, val_indices = indices[num_val:], indices[:num_val]
+    return (
+        Subset(train_augmented, train_indices),
+        Subset(train_evaluation, val_indices),
+        test_dataset,
     )
-
-    num_total = len(train_source)
-    num_val = int(num_total * val_ratio)
-    num_train = num_total - num_val
-
-    generator = torch.Generator().manual_seed(seed)
-    indices = torch.randperm(num_total, generator=generator).tolist()
-
-    train_dataset = Subset(train_source, indices[:num_train])
-    val_dataset = Subset(val_source, indices[num_train:])
-
-    return train_dataset, val_dataset, test_dataset

@@ -1,0 +1,8 @@
+_base_: base.yaml
+experiment:
+  name: exp5_laplacian_learnable
+model:
+  args:
+    stem_filter: laplacian
+    stem_trainable: true
+    spatial_kernels: 3

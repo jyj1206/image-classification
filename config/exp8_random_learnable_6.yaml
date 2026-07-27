@@ -1,0 +1,8 @@
+_base_: base.yaml
+experiment:
+  name: exp8_random_learnable_6
+model:
+  args:
+    stem_filter: learnable
+    stem_trainable: true
+    spatial_kernels: 6

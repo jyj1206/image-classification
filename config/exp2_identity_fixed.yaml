@@ -1,0 +1,8 @@
+_base_: base.yaml
+experiment:
+  name: exp2_identity_fixed
+model:
+  args:
+    stem_filter: identity
+    stem_trainable: false
+    spatial_kernels: 3

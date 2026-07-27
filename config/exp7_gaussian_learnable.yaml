@@ -1,0 +1,8 @@
+_base_: base.yaml
+experiment:
+  name: exp7_gaussian_learnable
+model:
+  args:
+    stem_filter: gaussian
+    stem_trainable: true
+    spatial_kernels: 3
