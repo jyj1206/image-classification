@@ -1,0 +1,4 @@
+_base_: [base.yaml, ../exp11_random_learnable_12.yaml]
+experiment: {name: gray_exp11_random_learnable_4, result_root: results/grayscale}
+dataset: {grayscale: true}
+model: {args: {input_channels: 1, spatial_kernels: 4}}

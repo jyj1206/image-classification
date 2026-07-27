@@ -38,6 +38,21 @@ def collect_class_samples(loader, num_classes=10):
 
 def _filter_layout(kernel_count, filter_type):
     channels = ("R", "G", "B")
+    if kernel_count in (1, 2, 4):
+        if filter_type == "sobel":
+            operators = ("Sobel_X", "Sobel_Y")
+        elif filter_type == "mixed":
+            operators = ("Sobel_X", "Sobel_Y", "Laplacian", "Gaussian")
+        elif kernel_count == 1:
+            operators = (
+                filter_type.capitalize() if filter_type != "learnable" else "Random",
+            )
+        else:
+            operators = tuple(f"Random_{index + 1}" for index in range(kernel_count))
+        raw_names = tuple(f"Gray_{operator}" for operator in operators)
+        groups = tuple((operator, (index,)) for index, operator in enumerate(operators))
+        return raw_names, groups
+
     if kernel_count == 3:
         raw_names = channels
         group_name = filter_type.capitalize() if filter_type != "learnable" else "Random"
@@ -118,10 +133,10 @@ def save_stem_visualization(weight, path, title="Stem filters", filter_type=None
     weight = weight.detach().float().cpu()
     if (
         weight.ndim != 4
-        or weight.shape[0] not in (3, 6, 12)
+        or weight.shape[0] not in (1, 2, 3, 4, 6, 12)
         or tuple(weight.shape[1:]) != (1, 3, 3)
     ):
-        raise ValueError(f"Expected 3, 6, or 12 depthwise 3x3 kernels, got {tuple(weight.shape)}")
+        raise ValueError(f"Expected 1, 2, 3, 4, 6, or 12 depthwise kernels, got {tuple(weight.shape)}")
 
     filters = weight[:, 0]
     kernel_count = filters.shape[0]
@@ -174,8 +189,12 @@ def save_stem_feature_maps(
     model.train(was_training)
 
     inputs = images.detach().float().cpu()
-    mean = torch.tensor((0.4914, 0.4822, 0.4465)).view(1, 3, 1, 1)
-    std = torch.tensor((0.2470, 0.2435, 0.2616)).view(1, 3, 1, 1)
+    if inputs.shape[1] == 1:
+        mean = torch.tensor((0.4809,)).view(1, 1, 1, 1)
+        std = torch.tensor((0.2392,)).view(1, 1, 1, 1)
+    else:
+        mean = torch.tensor((0.4914, 0.4822, 0.4465)).view(1, 3, 1, 1)
+        std = torch.tensor((0.2470, 0.2435, 0.2616)).view(1, 3, 1, 1)
     inputs = (inputs * std + mean).clamp(0, 1)
 
     raw_names, groups = _filter_layout(feature_maps.shape[1], filter_type)
@@ -194,8 +213,12 @@ def save_stem_feature_maps(
             else f"class_{class_index}"
         )
         sample_name = f"class{class_index:02d}_{class_name}"
-        input_image = inputs[sample_index].permute(1, 2, 0).numpy()
-        axes[sample_index, 0].imshow(input_image)
+        if inputs.shape[1] == 1:
+            input_image = inputs[sample_index, 0].numpy()
+            axes[sample_index, 0].imshow(input_image, cmap="gray", vmin=0, vmax=1)
+        else:
+            input_image = inputs[sample_index].permute(1, 2, 0).numpy()
+            axes[sample_index, 0].imshow(input_image)
         axes[sample_index, 0].set_ylabel(
             f"{class_index}: {class_name}", fontsize=8
         )
@@ -205,7 +228,13 @@ def save_stem_feature_maps(
         axes[sample_index, 0].set_yticks([])
 
         input_path = path.with_name(f"{asset_stem}_{sample_name}_input.png")
-        plt.imsave(input_path, input_image)
+        plt.imsave(
+            input_path,
+            input_image,
+            cmap="gray" if inputs.shape[1] == 1 else None,
+            vmin=0 if inputs.shape[1] == 1 else None,
+            vmax=1 if inputs.shape[1] == 1 else None,
+        )
 
         for raw_index, raw_name in enumerate(raw_names):
             raw_path = path.with_name(
@@ -220,18 +249,27 @@ def save_stem_feature_maps(
             )
 
         for group_index, (group_name, indices) in enumerate(groups):
-            rgb_response = feature_maps[sample_index, list(indices)].permute(1, 2, 0)
-            rgb_display = (rgb_response / (2.0 * limit) + 0.5).clamp(0, 1).numpy()
             axis = axes[sample_index, group_index + 1]
-            axis.imshow(rgb_display)
+            if len(indices) == 3:
+                response = feature_maps[sample_index, list(indices)].permute(1, 2, 0)
+                display = (response / (2.0 * limit) + 0.5).clamp(0, 1).numpy()
+                axis.imshow(display)
+                summary_kind = "RGB"
+            else:
+                display = feature_maps[sample_index, indices[0]].numpy()
+                axis.imshow(display, cmap="coolwarm", vmin=-limit, vmax=limit)
+                summary_kind = "Gray"
             if sample_index == 0:
-                axis.set_title(f"{group_name.replace('_', ' ')} RGB", fontsize=9)
+                axis.set_title(
+                    f"{group_name.replace('_', ' ')} {summary_kind}", fontsize=9
+                )
             axis.set_xticks([])
             axis.set_yticks([])
-            rgb_path = path.with_name(
-                f"{asset_stem}_{sample_name}_RGB_{_safe_name(group_name)}.png"
-            )
-            plt.imsave(rgb_path, rgb_display)
+            if summary_kind == "RGB":
+                rgb_path = path.with_name(
+                    f"{asset_stem}_{sample_name}_RGB_{_safe_name(group_name)}.png"
+                )
+                plt.imsave(rgb_path, display)
 
     figure.suptitle(title)
     figure.subplots_adjust(top=0.9, hspace=0.12, wspace=0.08)

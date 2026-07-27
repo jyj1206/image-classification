@@ -1,0 +1,6 @@
+_base_: ../base.yaml
+experiment:
+  result_root: results/no_batchnorm
+model:
+  args:
+    use_batchnorm: false

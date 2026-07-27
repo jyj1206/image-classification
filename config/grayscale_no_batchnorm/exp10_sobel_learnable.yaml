@@ -1,0 +1,4 @@
+_base_: [base.yaml, ../exp10_sobel_learnable.yaml]
+experiment: {name: gray_no_bn_exp10_sobel_learnable, result_root: results/grayscale_no_batchnorm}
+dataset: {grayscale: true}
+model: {args: {input_channels: 1, spatial_kernels: 2, use_batchnorm: false}}

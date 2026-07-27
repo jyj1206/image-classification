@@ -34,19 +34,27 @@ def initialize_stem_filter(conv, filter_type="learnable", trainable=True):
     """Initialize the depthwise spatial operation for one experiment."""
     if filter_type not in FILTER_TYPES:
         raise ValueError(f"filter_type must be one of {FILTER_TYPES}, got {filter_type!r}")
-    valid_shapes = (
-        ((3, 1, 3, 3), (6, 1, 3, 3), (12, 1, 3, 3))
-        if filter_type == "learnable"
-        else ((12, 1, 3, 3),)
-        if filter_type == "mixed"
-        else ((6, 1, 3, 3),)
-        if filter_type == "sobel"
-        else ((3, 1, 3, 3),)
-    )
-    if tuple(conv.weight.shape) not in valid_shapes or conv.groups != 3:
+    input_channels = conv.in_channels
+    expected_multiplier = {
+        "identity": 1,
+        "laplacian": 1,
+        "gaussian": 1,
+        "sobel": 2,
+        "mixed": 4,
+    }.get(filter_type)
+    multiplier = conv.out_channels // input_channels
+    valid_multiplier = multiplier in (1, 2, 4) if filter_type == "learnable" else multiplier == expected_multiplier
+    expected_shape = (conv.out_channels, 1, 3, 3)
+    if (
+        conv.out_channels % input_channels != 0
+        or not valid_multiplier
+        or tuple(conv.weight.shape) != expected_shape
+        or conv.groups != input_channels
+    ):
         raise ValueError(
-            f"{filter_type} stem must have weight shape in {valid_shapes} and "
-            f"groups=3, got {tuple(conv.weight.shape)} and groups={conv.groups}"
+            f"Invalid {filter_type} depthwise stem: in={input_channels}, "
+            f"out={conv.out_channels}, groups={conv.groups}, "
+            f"weight={tuple(conv.weight.shape)}"
         )
 
     with torch.no_grad():
@@ -57,18 +65,18 @@ def initialize_stem_filter(conv, filter_type="learnable", trainable=True):
             conv.weight.zero_()
             if filter_type == "mixed":
                 # Per RGB group: Sobel-X, Sobel-Y, Laplacian, Gaussian.
-                for input_channel in range(3):
+                for input_channel in range(input_channels):
                     start = 4 * input_channel
                     for kernel_idx in range(4):
                         conv.weight[start + kernel_idx, 0].copy_(kernels[kernel_idx])
             elif filter_type == "sobel":
                 # Grouped-convolution output order:
                 # R-X, R-Y, G-X, G-Y, B-X, B-Y.
-                for input_channel in range(3):
+                for input_channel in range(input_channels):
                     conv.weight[2 * input_channel, 0].copy_(kernels[0])
                     conv.weight[2 * input_channel + 1, 0].copy_(kernels[1])
             else:
-                for input_channel in range(3):
+                for input_channel in range(input_channels):
                     conv.weight[input_channel, 0].copy_(kernels[0])
 
     conv.weight.requires_grad_(bool(trainable))

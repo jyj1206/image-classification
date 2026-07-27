@@ -1,0 +1,9 @@
+_base_: ../base.yaml
+experiment:
+  result_root: results/grayscale_no_batchnorm
+dataset:
+  grayscale: true
+model:
+  args:
+    input_channels: 1
+    use_batchnorm: false

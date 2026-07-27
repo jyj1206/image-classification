@@ -1,0 +1,3 @@
+_base_: [base.yaml, ../exp6_gaussian_fixed.yaml]
+experiment: {name: no_bn_exp6_gaussian_fixed, result_root: results/no_batchnorm}
+model: {args: {use_batchnorm: false}}

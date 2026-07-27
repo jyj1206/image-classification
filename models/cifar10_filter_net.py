@@ -13,27 +13,35 @@ class CIFAR10FilterNet(nn.Module):
         stem_filter="learnable",
         stem_trainable=True,
         spatial_kernels=3,
+        input_channels=3,
+        use_batchnorm=True,
     ):
         super().__init__()
         spatial_channels = int(spatial_kernels)
-        if spatial_channels not in (3, 6, 12):
-            raise ValueError("spatial_kernels must be 3, 6, or 12")
-        if stem_filter == "sobel" and spatial_channels != 6:
-            raise ValueError("Sobel requires spatial_kernels=6")
-        if stem_filter == "mixed" and spatial_channels != 12:
-            raise ValueError("Mixed filters require spatial_kernels=12")
-        if stem_filter not in ("learnable", "sobel", "mixed") and spatial_channels != 3:
-            raise ValueError(f"{stem_filter} requires spatial_kernels=3")
+        input_channels = int(input_channels)
+        multiplier = spatial_channels // input_channels
+        if input_channels not in (1, 3) or spatial_channels % input_channels:
+            raise ValueError("input_channels must be 1 or 3 and divide spatial_kernels")
+        if multiplier not in (1, 2, 4):
+            raise ValueError("Depthwise kernel multiplier must be 1, 2, or 4")
+        expected_multiplier = {"sobel": 2, "mixed": 4}.get(stem_filter, 1)
+        if stem_filter != "learnable" and multiplier != expected_multiplier:
+            raise ValueError(
+                f"{stem_filter} requires {expected_multiplier} kernel(s) per input channel"
+            )
+        self.use_batchnorm = bool(use_batchnorm)
         self.stem_conv = nn.Conv2d(
-            3, spatial_channels, kernel_size=3, stride=1,
-            padding=1, groups=3, bias=False,
+            input_channels, spatial_channels, kernel_size=3, stride=1,
+            padding=1, groups=input_channels, bias=False,
         )
         # This projection and every layer below it are identical and learnable
         # in all nine experiments.
         self.stem_projection = nn.Conv2d(
             spatial_channels, 64, kernel_size=1, stride=1, padding=0, bias=False
         )
-        self.stem_bn = nn.BatchNorm2d(64)
+        self.stem_bn = (
+            nn.BatchNorm2d(64) if self.use_batchnorm else nn.Identity()
+        )
         self.relu = nn.ReLU(inplace=True)
         self.in_channels = 64
         self.stage1 = self._make_stage(64, blocks=2, stride=1)
@@ -46,9 +54,17 @@ class CIFAR10FilterNet(nn.Module):
         initialize_stem_filter(self.stem_conv, stem_filter, stem_trainable)
 
     def _make_stage(self, channels, blocks, stride):
-        layers = [ResBlock(self.in_channels, channels, stride)]
+        layers = [
+            ResBlock(
+                self.in_channels, channels, stride,
+                use_batchnorm=self.use_batchnorm,
+            )
+        ]
         self.in_channels = channels
-        layers.extend(ResBlock(channels, channels) for _ in range(1, blocks))
+        layers.extend(
+            ResBlock(channels, channels, use_batchnorm=self.use_batchnorm)
+            for _ in range(1, blocks)
+        )
         return nn.Sequential(*layers)
 
     def _initialize_common_layers(self):

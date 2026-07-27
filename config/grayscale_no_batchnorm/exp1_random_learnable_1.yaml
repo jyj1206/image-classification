@@ -1,0 +1,4 @@
+_base_: [base.yaml, ../exp1_random_learnable_3.yaml]
+experiment: {name: gray_no_bn_exp1_random_learnable_1, result_root: results/grayscale_no_batchnorm}
+dataset: {grayscale: true}
+model: {args: {input_channels: 1, spatial_kernels: 1, use_batchnorm: false}}

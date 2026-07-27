@@ -56,6 +56,31 @@ def build_dataloader(config, include_test=True):
     return train_loader, val_loader, test_loader
 
 
+def build_test_dataloader(config):
+    dataset_cfg = config["dataset"]
+    if dataset_cfg.get("name", "").lower() != "cifar10":
+        raise ValueError("This experiment supports only the CIFAR-10 dataset.")
+    test_cfg = dataset_cfg.get("test", dataset_cfg["validation"])
+    root = test_cfg.get(
+        "root", dataset_cfg["train"].get("root", dataset_cfg.get("root", "data"))
+    )
+    grayscale = bool(dataset_cfg.get("grayscale", False))
+    dataset = CIFAR10(
+        root=root,
+        train=False,
+        download=test_cfg.get("download", True),
+        transform=get_transforms("test", grayscale=grayscale),
+    )
+    pin_memory = config["runtime"].get("device", "cuda") == "cuda"
+    return DataLoader(
+        dataset,
+        batch_size=test_cfg["batch_size"],
+        shuffle=False,
+        num_workers=test_cfg.get("num_workers", 0),
+        pin_memory=pin_memory,
+    )
+
+
 def build_dataset(config, include_test=True):
     dataset_cfg = config["dataset"]
     if dataset_cfg.get("name", "").lower() != "cifar10":
@@ -65,18 +90,19 @@ def build_dataset(config, include_test=True):
     test_cfg = dataset_cfg.get("test", dataset_cfg["validation"])
     root = train_cfg.get("root", dataset_cfg.get("root", "data"))
     seed = config["runtime"].get("seed") or 42
+    grayscale = bool(dataset_cfg.get("grayscale", False))
 
     train_augmented = CIFAR10(
         root=root,
         train=True,
         download=train_cfg.get("download", True),
-        transform=get_transforms("train"),
+        transform=get_transforms("train", grayscale=grayscale),
     )
     train_evaluation = CIFAR10(
         root=root,
         train=True,
         download=False,
-        transform=get_transforms("validation"),
+        transform=get_transforms("validation", grayscale=grayscale),
     )
     test_dataset = None
     if include_test:
@@ -84,7 +110,7 @@ def build_dataset(config, include_test=True):
             root=test_cfg.get("root", root),
             train=False,
             download=test_cfg.get("download", True),
-            transform=get_transforms("test"),
+            transform=get_transforms("test", grayscale=grayscale),
         )
 
     num_total = len(train_augmented)

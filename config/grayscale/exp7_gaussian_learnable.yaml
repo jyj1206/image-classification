@@ -1,0 +1,4 @@
+_base_: [base.yaml, ../exp7_gaussian_learnable.yaml]
+experiment: {name: gray_exp7_gaussian_learnable, result_root: results/grayscale}
+dataset: {grayscale: true}
+model: {args: {input_channels: 1, spatial_kernels: 1}}

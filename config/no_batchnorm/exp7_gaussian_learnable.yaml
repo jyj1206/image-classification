@@ -1,0 +1,3 @@
+_base_: [base.yaml, ../exp7_gaussian_learnable.yaml]
+experiment: {name: no_bn_exp7_gaussian_learnable, result_root: results/no_batchnorm}
+model: {args: {use_batchnorm: false}}

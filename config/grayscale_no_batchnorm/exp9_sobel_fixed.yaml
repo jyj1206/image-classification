@@ -1,0 +1,4 @@
+_base_: [base.yaml, ../exp9_sobel_fixed.yaml]
+experiment: {name: gray_no_bn_exp9_sobel_fixed, result_root: results/grayscale_no_batchnorm}
+dataset: {grayscale: true}
+model: {args: {input_channels: 1, spatial_kernels: 2, use_batchnorm: false}}

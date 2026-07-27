@@ -1,0 +1,4 @@
+_base_: [base.yaml, ../exp12_mixed_learnable.yaml]
+experiment: {name: gray_exp12_mixed_learnable, result_root: results/grayscale}
+dataset: {grayscale: true}
+model: {args: {input_channels: 1, spatial_kernels: 4}}

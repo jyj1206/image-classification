@@ -101,6 +101,29 @@ python test.py --checkpoint results/result_exp9_sobel_fixed_cifar10_YYYYMMDD_HHM
 Test accuracy와 loss를 출력하고 `visualizations/` 아래에 kernel과 feature
 map overview 및 PPT용 개별 이미지를 저장한다.
 
+모든 학습 결과의 best checkpoint를 일괄 평가:
+
+```bash
+python test_all.py --results-root results
+```
+
+`results/**/checkpoints/best.pth`를 모두 찾아 각각의 test 결과를 `runs/`에
+저장하고, 전체 accuracy, macro precision, macro recall, macro F1을
+`runs/all_test_results_<timestamp>.csv`로 집계한다.
+
+## 추가 ablation config
+
+```text
+config/no_batchnorm/             RGB, 모든 BatchNorm 제거, 3/6/12 kernels
+config/grayscale/                Grayscale, BatchNorm 유지, 1/2/4 kernels
+config/grayscale_no_batchnorm/   Grayscale, 모든 BatchNorm 제거, 1/2/4 kernels
+```
+
+각 폴더에는 기존 실험과 대응하는 12개 config가 있다. Grayscale 변환은
+depthwise convolution 이전에 적용되며, 입력 채널당 kernel multiplier
+1/2/4를 유지한다. Grayscale 시각화 개별 파일은 `_Gray_*` 이름으로
+저장된다.
+
 학습 결과는 `results/`, test 결과는 `runs/`에 분리된다.
 
 ```text

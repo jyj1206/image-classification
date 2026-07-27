@@ -12,6 +12,7 @@ runtime:
 
 dataset:
   name: cifar10
+  grayscale: false
   val_ratio: 0.1
   train:
     root: data
@@ -34,6 +35,8 @@ model:
     stem_filter: learnable
     stem_trainable: true
     spatial_kernels: 3
+    input_channels: 3
+    use_batchnorm: true
 
 trainer:
   epochs: 200

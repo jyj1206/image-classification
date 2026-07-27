@@ -1,0 +1,4 @@
+_base_: [base.yaml, ../exp4_laplacian_fixed.yaml]
+experiment: {name: gray_exp4_laplacian_fixed, result_root: results/grayscale}
+dataset: {grayscale: true}
+model: {args: {input_channels: 1, spatial_kernels: 1}}
