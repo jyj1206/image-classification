@@ -86,10 +86,11 @@ epochs는 최저 learning rate 1e-5까지 cosine annealing을 적용한다.
 - `config.yaml`
 - `checkpoints/latest.pth`
 - `checkpoints/best.pth`
+- `best_metrics.json`
 - `metrics.csv`, `history.json`
-- `training_curves.png`
-- `stem_filters_initial.png`, `stem_filters_final.png`
-- `stem_feature_maps_initial.png`, `stem_feature_maps_final.png`
+- `visualizations/training_curves.png`
+- `visualizations/kernels/init`, `visualizations/kernels/final`
+- `visualizations/feature_maps/init`, `visualizations/feature_maps/final`
 
 ## 별도 테스트
 
@@ -97,7 +98,8 @@ epochs는 최저 learning rate 1e-5까지 cosine annealing을 적용한다.
 python test.py --checkpoint results/result_exp9_sobel_fixed_cifar10_YYYYMMDD_HHMMSS
 ```
 
-Test accuracy와 loss를 출력하고 `stem_filters_test.png`를 저장한다.
+Test accuracy와 loss를 출력하고 `visualizations/` 아래에 kernel과 feature
+map overview 및 PPT용 개별 이미지를 저장한다.
 
 학습 결과는 `results/`, test 결과는 `runs/`에 분리된다.
 
@@ -106,16 +108,41 @@ results/result_<experiment>_cifar10_<timestamp>/
 ├─ config.yaml
 ├─ history.json
 ├─ metrics.csv
-├─ training_curves.png
-├─ stem_filters_initial.png
-├─ stem_filters_final.png
-└─ checkpoints/
-   ├─ latest.pth
-   └─ best.pth
+├─ best_metrics.json
+├─ checkpoints/
+│  ├─ latest.pth
+│  └─ best.pth
+└─ visualizations/
+   ├─ training_curves.png
+   ├─ kernels/
+   │  ├─ init/
+   │  │  ├─ kernel_overview.png
+   │  │  └─ kernel_[R/G/B]*.png
+   │  └─ final/
+   │     ├─ kernel_overview.png
+   │     └─ kernel_[R/G/B]*.png
+   └─ feature_maps/
+      ├─ init/
+      │  ├─ feature_map_overview.png
+      │  └─ feature_map_class##_name_[input/R/G/B/RGB]*.png
+      └─ final/
+         ├─ feature_map_overview.png
+         └─ feature_map_class##_name_[input/R/G/B/RGB]*.png
 
 runs/run_<experiment>_cifar10_<timestamp>/
 ├─ config.yaml
 ├─ test_metrics.json
-├─ stem_filters_test.png
-└─ stem_feature_maps_test.png
+└─ visualizations/
+   ├─ kernels/
+   │  └─ test/
+   │     ├─ kernel_overview.png
+   │     └─ kernel_[R/G/B]*.png
+   └─ feature_maps/
+      └─ test/
+         ├─ feature_map_overview.png
+         └─ feature_map_class##_name_[input/R/G/B/RGB]*.png
 ```
+
+Train의 init/final feature map은 validation set에서 CIFAR-10 클래스별 한 장씩
+선택한 동일한 10장을 사용한다. Test feature map도 test set에서 클래스별 한
+장씩 총 10장을 사용한다.

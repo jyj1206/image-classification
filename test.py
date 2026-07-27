@@ -11,7 +11,11 @@ from tqdm import tqdm
 
 from builds import build_dataloader, build_loss, build_model
 from utils.utils_config import load_config, normalize_config, save_config
-from utils.utils_visualization import save_stem_feature_maps, save_stem_visualization
+from utils.utils_visualization import (
+    collect_class_samples,
+    save_stem_feature_maps,
+    save_stem_visualization,
+)
 
 
 def parse_args():
@@ -77,7 +81,7 @@ def evaluate(model, loader, criterion, device):
             sample_count += labels.size(0)
             progress.set_postfix(
                 loss=f"{loss_sum / sample_count:.4f}",
-                acc=f"{100.0 * correct / sample_count:.2f}%",
+                accuracy=f"{100.0 * correct / sample_count:.2f}%",
             )
 
     return {
@@ -117,13 +121,17 @@ def main():
 
     criterion = build_loss(config)
     _, _, test_loader = build_dataloader(config)
-    visualization_images = next(iter(test_loader))[0][:4].to(
-        device, non_blocking=True
-    )
+    visualization_images, visualization_labels = collect_class_samples(test_loader)
+    visualization_images = visualization_images.to(device, non_blocking=True)
     metrics = evaluate(model, test_loader, criterion, device)
 
-    visualization_path = output_dir / "stem_filters_test.png"
-    feature_map_path = output_dir / "stem_feature_maps_test.png"
+    visualization_dir = output_dir / "visualizations"
+    visualization_path = (
+        visualization_dir / "kernels" / "test" / "kernel_overview.png"
+    )
+    feature_map_path = (
+        visualization_dir / "feature_maps" / "test" / "feature_map_overview.png"
+    )
     metrics_path = output_dir / "test_metrics.json"
     filter_type = config["model"]["args"]["stem_filter"]
     save_stem_visualization(
@@ -138,6 +146,7 @@ def main():
         feature_map_path,
         title="Test feature maps after depthwise 3x3",
         filter_type=filter_type,
+        sample_labels=visualization_labels,
     )
     metrics["checkpoint"] = str(checkpoint_path)
     metrics["config"] = str(config_path)

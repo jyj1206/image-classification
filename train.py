@@ -31,6 +31,7 @@ from utils.utils_dist import (
     unwrap_model,
 )
 from utils.utils_visualization import (
+    collect_class_samples,
     save_stem_feature_maps,
     save_stem_visualization,
     save_training_curves,
@@ -82,7 +83,7 @@ def run_epoch(model, loader, criterion, device, optimizer=None, description=None
         totals[2] += labels.size(0)
         progress.set_postfix(
             loss=f"{(totals[0] / totals[2]).item():.4f}",
-            acc=f"{(100.0 * totals[1] / totals[2]).item():.2f}%",
+            accuracy=f"{(100.0 * totals[1] / totals[2]).item():.2f}%",
         )
 
     if is_distributed():
@@ -118,7 +119,23 @@ def write_history(history, result_dir):
         writer = csv.DictWriter(file, fieldnames=history[0].keys())
         writer.writeheader()
         writer.writerows(history)
-    save_training_curves(history, result_dir / "training_curves.png")
+    save_training_curves(
+        history, result_dir / "visualizations" / "training_curves.png"
+    )
+
+
+def write_best_metrics(record, best_accuracy, result_dir, checkpoint_path):
+    payload = {
+        "best_epoch": record["epoch"],
+        "best_val_accuracy": best_accuracy,
+        "val_loss_at_best": record["val_loss"],
+        "train_accuracy_at_best": record["train_accuracy"],
+        "train_loss_at_best": record["train_loss"],
+        "learning_rate_at_best": record["lr"],
+        "checkpoint": str(checkpoint_path),
+    }
+    with (result_dir / "best_metrics.json").open("w", encoding="utf-8") as file:
+        json.dump(payload, file, indent=2)
 
 
 def main():
@@ -151,22 +168,25 @@ def main():
             history = checkpoint.get("history", [])
 
         if is_main_process():
-            visualization_images = next(iter(val_loader))[0][:4].to(
-                device, non_blocking=True
+            visualization_dir = result_dir / "visualizations"
+            visualization_images, visualization_labels = collect_class_samples(
+                val_loader
             )
+            visualization_images = visualization_images.to(device, non_blocking=True)
             filter_type = config["model"]["args"]["stem_filter"]
             save_stem_visualization(
                 model.stem_conv.weight,
-                result_dir / "stem_filters_initial.png",
+                visualization_dir / "kernels" / "init" / "kernel_overview.png",
                 "Initial stem filters",
                 filter_type=filter_type,
             )
             save_stem_feature_maps(
                 model,
                 visualization_images,
-                result_dir / "stem_feature_maps_initial.png",
+                visualization_dir / "feature_maps" / "init" / "feature_map_overview.png",
                 "Initial feature maps after depthwise 3x3",
                 filter_type=filter_type,
+                sample_labels=visualization_labels,
             )
             trainable = sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
             total = sum(parameter.numel() for parameter in model.parameters())
@@ -203,21 +223,36 @@ def main():
             history.append(record)
             scheduler.step()
             if is_main_process():
-                print(
-                    f"Epoch {epoch:03d}/{epochs} | "
-                    f"train {record['train_loss']:.4f}, {record['train_accuracy']:.2f}% | "
-                    f"val {record['val_loss']:.4f}, {record['val_accuracy']:.2f}%"
-                )
                 is_best = record["val_accuracy"] > best_accuracy
                 best_accuracy = max(best_accuracy, record["val_accuracy"])
+                best_status = (
+                    f"NEW BEST: {best_accuracy:.2f}%"
+                    if is_best
+                    else f"Best Validation Accuracy: {best_accuracy:.2f}%"
+                )
+                tqdm.write(
+                    f"\n[Epoch {epoch:03d}/{epochs}]\n"
+                    f"  Train      | Loss: {record['train_loss']:.4f} "
+                    f"| Accuracy: {record['train_accuracy']:.2f}%\n"
+                    f"  Validation | Loss: {record['val_loss']:.4f} "
+                    f"| Accuracy: {record['val_accuracy']:.2f}%\n"
+                    f"  Learning Rate: {record['lr']:.8f} | {best_status}"
+                )
                 save_checkpoint(
                     checkpoint_dir / "latest.pth", model, optimizer, scheduler,
                     epoch, best_accuracy, history,
                 )
                 if is_best:
+                    best_checkpoint_path = checkpoint_dir / "best.pth"
                     save_checkpoint(
-                        checkpoint_dir / "best.pth", model, optimizer, scheduler,
+                        best_checkpoint_path, model, optimizer, scheduler,
                         epoch, best_accuracy, history,
+                    )
+                    write_best_metrics(
+                        record,
+                        best_accuracy,
+                        result_dir,
+                        best_checkpoint_path,
                     )
                 write_history(history, result_dir)
 
@@ -228,16 +263,17 @@ def main():
         if is_main_process():
             save_stem_visualization(
                 unwrap_model(model).stem_conv.weight,
-                result_dir / "stem_filters_final.png",
+                visualization_dir / "kernels" / "final" / "kernel_overview.png",
                 "Final stem filters (best checkpoint)",
                 filter_type=filter_type,
             )
             save_stem_feature_maps(
                 unwrap_model(model),
                 visualization_images,
-                result_dir / "stem_feature_maps_final.png",
+                visualization_dir / "feature_maps" / "final" / "feature_map_overview.png",
                 "Final feature maps after depthwise 3x3 (best checkpoint)",
                 filter_type=filter_type,
+                sample_labels=visualization_labels,
             )
             print(f"Best validation accuracy: {best_accuracy:.2f}%")
     finally:
