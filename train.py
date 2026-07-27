@@ -231,12 +231,12 @@ def main():
                     else f"Best Validation Accuracy: {best_accuracy:.2f}%"
                 )
                 tqdm.write(
-                    f"\n[Epoch {epoch:03d}/{epochs}]\n"
-                    f"  Train      | Loss: {record['train_loss']:.4f} "
-                    f"| Accuracy: {record['train_accuracy']:.2f}%\n"
-                    f"  Validation | Loss: {record['val_loss']:.4f} "
-                    f"| Accuracy: {record['val_accuracy']:.2f}%\n"
-                    f"  Learning Rate: {record['lr']:.8f} | {best_status}"
+                    f"[Epoch {epoch:03d}/{epochs}] "
+                    f"Train Loss: {record['train_loss']:.4f} | "
+                    f"Train Accuracy: {record['train_accuracy']:.2f}% | "
+                    f"Validation Loss: {record['val_loss']:.4f} | "
+                    f"Validation Accuracy: {record['val_accuracy']:.2f}% | "
+                    f"LR: {record['lr']:.8f} | {best_status}"
                 )
                 save_checkpoint(
                     checkpoint_dir / "latest.pth", model, optimizer, scheduler,
