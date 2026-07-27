@@ -1,0 +1,48 @@
+experiment:
+  name: baseline
+  result_root: result
+
+runtime:
+  seed: null
+  device: cuda
+  gpu_ids: [0]
+
+  distributed:
+    enabled: False
+    backend: nccl
+
+dataset:
+  train:
+    root: data/RDRF_dataset
+    split: train
+    patch_size: 256
+    batch_size: 16
+    num_workers: 4
+
+  validation:
+    root: data/RDRF_dataset
+    split: validation
+    batch_size: 16
+    num_workers: 4
+
+model:
+  name: baseline
+  args:
+    TODO: model args
+
+trainer:
+  iterations: 100000
+  epochs: null
+  resume: null
+  
+  loss: 
+    loss: TODO
+    scheduler: TODO
+
+  log_interval: 100
+  val_interval: 1000
+  save_interval: 1000
+
+  optimizer:
+    TODO: optimizer config
+  
