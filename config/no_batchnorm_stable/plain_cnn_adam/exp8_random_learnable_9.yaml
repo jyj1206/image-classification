@@ -1,0 +1,4 @@
+_base_: base.yaml
+experiment: {name: plain_adam_rgb_exp8_random_learnable_9}
+model:
+  args: {stem_filter: learnable, stem_trainable: true, spatial_kernels: 9}

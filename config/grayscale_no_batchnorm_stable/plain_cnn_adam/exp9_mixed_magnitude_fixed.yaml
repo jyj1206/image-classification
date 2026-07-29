@@ -1,0 +1,4 @@
+_base_: base.yaml
+experiment: {name: plain_adam_gray_exp9_mixed_magnitude_fixed}
+model:
+  args: {stem_filter: mixed_magnitude, stem_trainable: false, spatial_kernels: 3}

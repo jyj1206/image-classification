@@ -43,7 +43,7 @@ def initialize_stem_filter(conv, filter_type="learnable", trainable=True):
         "mixed": 4,
     }.get(filter_type)
     multiplier = conv.out_channels // input_channels
-    valid_multiplier = multiplier in (1, 2, 4) if filter_type == "learnable" else multiplier == expected_multiplier
+    valid_multiplier = multiplier in (1, 2, 3, 4) if filter_type == "learnable" else multiplier == expected_multiplier
     expected_shape = (conv.out_channels, 1, 3, 3)
     if (
         conv.out_channels % input_channels != 0

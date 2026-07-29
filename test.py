@@ -164,6 +164,7 @@ def run_test(
         kernel_path,
         title="Stem filters at test time",
         filter_type=filter_type,
+        input_channels=config["model"]["args"]["input_channels"],
     )
     save_stem_feature_maps(
         model,

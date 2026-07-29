@@ -1,0 +1,4 @@
+_base_: base.yaml
+experiment: {name: plain_adam_gray_exp7_sobel_magnitude_learnable}
+model:
+  args: {stem_filter: sobel_magnitude, stem_trainable: true, spatial_kernels: 1}

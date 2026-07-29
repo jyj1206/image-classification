@@ -1,8 +1,13 @@
-from models import CIFAR10FilterNet
+from models import CIFAR10FilterNet, CIFAR10PlainFilterNet
 
 
 def build_model(config):
     model_config = config["model"]
-    if model_config["name"].lower() != "cifar10_filter_net":
+    models = {
+        "cifar10_filter_net": CIFAR10FilterNet,
+        "cifar10_plain_filter_net": CIFAR10PlainFilterNet,
+    }
+    name = model_config["name"].lower()
+    if name not in models:
         raise ValueError(f"Unsupported model: {model_config['name']}")
-    return CIFAR10FilterNet(**model_config.get("args", {}))
+    return models[name](**model_config.get("args", {}))

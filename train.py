@@ -201,6 +201,7 @@ def main():
                 visualization_dir / "kernels" / "init" / "kernel_overview.png",
                 "Initial stem filters",
                 filter_type=filter_type,
+                input_channels=config["model"]["args"]["input_channels"],
             )
             save_stem_feature_maps(
                 model,
@@ -298,6 +299,7 @@ def main():
                 visualization_dir / "kernels" / "final" / "kernel_overview.png",
                 "Final stem filters (best checkpoint)",
                 filter_type=filter_type,
+                input_channels=config["model"]["args"]["input_channels"],
             )
             save_stem_feature_maps(
                 unwrap_model(model),
