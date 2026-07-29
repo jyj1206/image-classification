@@ -162,7 +162,7 @@ def run_test(
     save_stem_visualization(
         model.stem_conv.weight,
         kernel_path,
-        title="Stem filters at test time",
+        title=None,
         filter_type=filter_type,
         input_channels=config["model"]["args"]["input_channels"],
     )

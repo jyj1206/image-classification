@@ -139,6 +139,52 @@ def _asset_stem(path):
     return path.stem[:-9] if path.stem.endswith("_overview") else path.stem
 
 
+def _save_nearest_variants(path):
+    """Save 2x/4x nearest-neighbor copies in dedicated sibling folders."""
+    from PIL import Image
+
+    path = Path(path)
+    with Image.open(path) as image:
+        for scale in (2, 4):
+            scaled_dir = path.parent / f"nearest_{scale}x"
+            scaled_dir.mkdir(parents=True, exist_ok=True)
+            scaled = image.resize(
+                (image.width * scale, image.height * scale),
+                resample=Image.Resampling.NEAREST,
+            )
+            scaled.save(scaled_dir / path.name)
+
+
+def _response_image(values, limit):
+    """Map a signed response to display gray while keeping zero at mid-gray."""
+    return (values / (2.0 * limit) + 0.5).clamp(0, 1).numpy()
+
+
+def _as_rgb(image):
+    import numpy as np
+
+    if image.ndim == 2:
+        return np.repeat(image[..., None], 3, axis=2)
+    return image
+
+
+def _save_input_output_pair(input_image, output_image, path):
+    """Save a title-free input/output pair suited for direct PPT insertion."""
+    import numpy as np
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    left = _as_rgb(input_image)
+    right = _as_rgb(output_image)
+    gap = np.ones((left.shape[0], 2, 3), dtype=np.float32)
+    paired = np.concatenate((left, gap, right), axis=1)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    plt.imsave(path, paired)
+    _save_nearest_variants(path)
+
+
 def _save_heatmap(values, path, title, limit, dpi=180, colorbar=True):
     import matplotlib
     matplotlib.use("Agg")
@@ -225,7 +271,8 @@ def save_stem_visualization(
         axis.set_title(raw_names[index].replace("_", " "), fontsize=9)
         axis.set_xticks([])
         axis.set_yticks([])
-    figure.suptitle(title)
+    if title:
+        figure.suptitle(title)
     figure.subplots_adjust(top=0.88, hspace=0.25, wspace=0.15)
     figure.savefig(path, dpi=180, bbox_inches="tight")
     plt.close(figure)
@@ -321,6 +368,7 @@ def save_stem_feature_maps(
             vmin=0 if inputs.shape[1] == 1 else None,
             vmax=1 if inputs.shape[1] == 1 else None,
         )
+        _save_nearest_variants(input_path)
         if inputs.shape[1] == 3:
             for channel_index, channel_name in enumerate(("R", "G", "B")):
                 channel_path = class_dir / (
@@ -333,17 +381,30 @@ def save_stem_feature_maps(
                     vmin=0,
                     vmax=1,
                 )
+                _save_nearest_variants(channel_path)
 
         for raw_index, raw_name in enumerate(raw_names):
             raw_path = class_dir / (
                 f"{asset_stem}_{_safe_name(raw_name)}.png"
             )
-            _save_heatmap(
-                feature_maps[sample_index, raw_index],
-                raw_path,
-                raw_name.replace("_", " "),
-                limit,
-                dpi=160,
+            raw_display = _response_image(
+                feature_maps[sample_index, raw_index], limit
+            )
+            plt.imsave(raw_path, raw_display, cmap="gray", vmin=0, vmax=1)
+            _save_nearest_variants(raw_path)
+
+            if inputs.shape[1] == 3:
+                source_channel = raw_index // max(
+                    feature_maps.shape[1] // inputs.shape[1], 1
+                )
+                pair_input = inputs[sample_index, source_channel].numpy()
+            else:
+                pair_input = inputs[sample_index, 0].numpy()
+            pair_path = class_dir / "pairs" / (
+                f"{asset_stem}_input_output_{_safe_name(raw_name)}.png"
+            )
+            _save_input_output_pair(
+                pair_input, raw_display, pair_path
             )
 
         for group_index, (group_name, indices) in enumerate(groups):
@@ -354,8 +415,10 @@ def save_stem_feature_maps(
                 axis.imshow(display)
                 summary_kind = "RGB"
             else:
-                display = feature_maps[sample_index, indices[0]].numpy()
-                axis.imshow(display, cmap="coolwarm", vmin=-limit, vmax=limit)
+                display = _response_image(
+                    feature_maps[sample_index, indices[0]], limit
+                )
+                axis.imshow(display, cmap="gray", vmin=0, vmax=1)
                 summary_kind = "Gray"
             if sample_index == 0:
                 axis.set_title(
@@ -368,11 +431,22 @@ def save_stem_feature_maps(
                     f"{asset_stem}_RGB_{_safe_name(group_name)}.png"
                 )
                 plt.imsave(rgb_path, display)
+                _save_nearest_variants(rgb_path)
+                pair_path = class_dir / "pairs" / (
+                    f"{asset_stem}_input_output_RGB_"
+                    f"{_safe_name(group_name)}.png"
+                )
+                _save_input_output_pair(
+                    inputs[sample_index].permute(1, 2, 0).numpy(),
+                    display,
+                    pair_path,
+                )
 
     figure.suptitle(title)
     figure.subplots_adjust(top=0.9, hspace=0.12, wspace=0.08)
     figure.savefig(path, dpi=160, bbox_inches="tight")
     plt.close(figure)
+    _save_nearest_variants(path)
 
 
 def save_training_curves(history, path):
