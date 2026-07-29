@@ -297,6 +297,8 @@ def save_stem_feature_maps(
             else f"class_{class_index}"
         )
         sample_name = f"class{class_index:02d}_{class_name}"
+        class_dir = path.parent / sample_name
+        class_dir.mkdir(parents=True, exist_ok=True)
         if inputs.shape[1] == 1:
             input_image = inputs[sample_index, 0].numpy()
             axes[sample_index, 0].imshow(input_image, cmap="gray", vmin=0, vmax=1)
@@ -311,7 +313,7 @@ def save_stem_feature_maps(
         axes[sample_index, 0].set_xticks([])
         axes[sample_index, 0].set_yticks([])
 
-        input_path = path.with_name(f"{asset_stem}_{sample_name}_input.png")
+        input_path = class_dir / f"{asset_stem}_input.png"
         plt.imsave(
             input_path,
             input_image,
@@ -321,8 +323,8 @@ def save_stem_feature_maps(
         )
         if inputs.shape[1] == 3:
             for channel_index, channel_name in enumerate(("R", "G", "B")):
-                channel_path = path.with_name(
-                    f"{asset_stem}_{sample_name}_input_{channel_name}.png"
+                channel_path = class_dir / (
+                    f"{asset_stem}_input_{channel_name}.png"
                 )
                 plt.imsave(
                     channel_path,
@@ -333,8 +335,8 @@ def save_stem_feature_maps(
                 )
 
         for raw_index, raw_name in enumerate(raw_names):
-            raw_path = path.with_name(
-                f"{asset_stem}_{sample_name}_{_safe_name(raw_name)}.png"
+            raw_path = class_dir / (
+                f"{asset_stem}_{_safe_name(raw_name)}.png"
             )
             _save_heatmap(
                 feature_maps[sample_index, raw_index],
@@ -362,8 +364,8 @@ def save_stem_feature_maps(
             axis.set_xticks([])
             axis.set_yticks([])
             if summary_kind == "RGB":
-                rgb_path = path.with_name(
-                    f"{asset_stem}_{sample_name}_RGB_{_safe_name(group_name)}.png"
+                rgb_path = class_dir / (
+                    f"{asset_stem}_RGB_{_safe_name(group_name)}.png"
                 )
                 plt.imsave(rgb_path, display)
 
