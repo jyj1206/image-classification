@@ -1,4 +1,4 @@
-_base_: ../base.yaml
+_base_: [../../base.yaml, ../base.yaml]
 
 experiment:
   result_root: results/no_batchnorm_stable_plain_cnn_adam
