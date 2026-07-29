@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from builds import build_loss, build_model, build_test_dataloader
 from utils.utils_config import load_config, normalize_config, save_config
+from utils.utils_complexity import analyze_inference_complexity
 from utils.utils_visualization import (
     collect_class_samples,
     save_stem_feature_maps,
@@ -146,6 +147,12 @@ def run_test(
     model = build_model(config).to(device)
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint["model"] if "model" in checkpoint else checkpoint)
+    input_channels = int(config["model"]["args"]["input_channels"])
+    complexity = analyze_inference_complexity(
+        model,
+        input_shape=(1, input_channels, 32, 32),
+        device=device,
+    )
 
     criterion = build_loss(config)
     test_loader = build_test_dataloader(config)
@@ -179,6 +186,7 @@ def run_test(
         "experiment": config["experiment"]["name"],
         "checkpoint": str(checkpoint_path),
         "config": str(config_path),
+        **complexity,
     })
     metrics_path = output_dir / "test_metrics.json"
     with metrics_path.open("w", encoding="utf-8") as file:
@@ -192,7 +200,11 @@ def run_test(
             f"Accuracy: {metrics['accuracy']:.2f}% | "
             f"Precision (macro): {metrics['precision']:.2f}% | "
             f"Recall (macro): {metrics['recall']:.2f}% | "
-            f"F1 (macro): {metrics['f1_score']:.2f}%"
+            f"F1 (macro): {metrics['f1_score']:.2f}% | "
+            f"Parameters: {metrics['total_parameters']:,} total / "
+            f"{metrics['trainable_parameters']:,} trainable | "
+            f"MACs: {metrics['macs_m']:.3f} M | "
+            f"FLOPs: {metrics['flops_m']:.3f} M"
         )
         print(f"Run directory: {output_dir}")
     return metrics, output_dir
